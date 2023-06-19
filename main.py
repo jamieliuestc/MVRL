@@ -59,9 +59,9 @@ if __name__ == "__main__":
 	parser.add_argument("--policy_noise", default=0.2, type=float)		# Noise added to target policy during critic update
 	parser.add_argument("--noise_clip", default=0.5, type=float)		# Range to clip target policy noise
 	parser.add_argument("--policy_freq", default=2, type=int)			# Frequency of delayed policy updates
-	parser.add_argument("--n_step", default=10, type=int)			# number of steps
+	parser.add_argument("--n_step", default=15, type=int)			# number of steps
 	parser.add_argument("--cluster_num", default=1e5, type=int)
-	parser.add_argument("--km_num", default=9, type=int)
+	parser.add_argument("--km_num", default=20, type=int)
 	parser.add_argument("--sample_rate", default=0.5, type=float)
 
 	args = parser.parse_args()
