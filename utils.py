@@ -3,6 +3,7 @@ import torch
 import random
 import math
 
+
 class ReplayBuffer(object):
 	def __init__(self, state_dim, action_dim,n, km_num, max_size=int(1e5)):
 		self.max_size = max_size
@@ -139,4 +140,4 @@ class ReplayBuffer1(object):
 			torch.FloatTensor(self.reward[ind]).to(self.device),
 			torch.FloatTensor(self.not_done[ind]).to(self.device)
 		)
-		
+	
