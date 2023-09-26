@@ -12,12 +12,6 @@ class AE1(nn.Module):
 	def __init__(self, state_dim, action_dim, n_step):
 		super(AE1, self).__init__()
 
-		#self.encoder = nn.RNN(state_dim + action_dim, math.ceil(state_dim / n_step), 2)
-		#self.decoder = nn.RNN( math.ceil(state_dim / n_step), state_dim + action_dim, 2)
-
-		#self.encoder = nn.LSTM(state_dim + action_dim, state_dim, 2)
-		#self.decoder = nn.LSTM(state_dim, state_dim + action_dim, 2)
-
 		self.encoder = nn.LSTM(state_dim + action_dim, math.ceil(state_dim / n_step), 5)
 		self.decoder = nn.LSTM(math.ceil(state_dim / n_step), state_dim + action_dim, 5)
 
@@ -34,21 +28,52 @@ class AE2(nn.Module):
 		super(AE2, self).__init__()
 
 		#encoder
-		self.e1 = nn.Linear(2 * state_dim + action_dim, 512)
+		self.e1 = nn.Linear(state_dim + action_dim, 512)
 		self.e2 = nn.Linear(512, 512)
-		self.z_layer = nn.Linear(512, 3 * state_dim)
+		self.z_layer = nn.Linear(512, state_dim)
 
 		#decoder
-		self.d1 = nn.Linear(3 * state_dim, 512)
+		self.d1 = nn.Linear(state_dim, 512)
 		self.d2 = nn.Linear(512, 512)
-		self.x_bar_layer = nn.Linear(512, 2 * state_dim + action_dim)
+		self.x_bar_layer = nn.Linear(512, state_dim + action_dim)
 
-	def forward(self, state, action, next_state):
+	def forward(self, state, action):
     	
-		sas = torch.cat([state, action, next_state], 1)
+		sa = torch.cat([state, action], 1)
 
 		# encoder
-		a = F.relu(self.e1(sas))
+		a = F.relu(self.e1(sa))
+		a = F.relu(self.e2(a))
+
+		encoder_state = self.z_layer(a)
+
+		# decoder
+		b = F.relu(self.d1(encoder_state))
+		b = F.relu(self.d2(b))
+		decoder_state = self.x_bar_layer(b)
+
+		return encoder_state, decoder_state
+
+
+class AE3(nn.Module):
+	def __init__(self, state_dim, reward_dim):
+		super(AE3, self).__init__()
+
+		#encoder
+		self.e1 = nn.Linear(state_dim + reward_dim , 512)
+		self.e2 = nn.Linear(512, 512)
+		self.z_layer = nn.Linear(512, state_dim)
+
+		#decoder
+		self.d1 = nn.Linear(state_dim, 512)
+		self.d2 = nn.Linear(512, 512)
+		self.x_bar_layer = nn.Linear(512, state_dim+reward_dim)
+
+	def forward(self, state, reward):
+		sr = torch.cat([state, reward], 1)
+
+		# encoder
+		a = F.relu(self.e1(sr))
 		a = F.relu(self.e2(a))
 
 		encoder_state = self.z_layer(a)
@@ -148,6 +173,7 @@ class MVRL(object):
 		self, 
 		state_dim, 
 		action_dim, 
+		reward_dim,
 		max_action,
 		discount, 
 		tau, 
@@ -159,8 +185,12 @@ class MVRL(object):
 	
 		self.ae1 = AE1(state_dim, action_dim, n_step).to(device)
 		self.ae1_optimizer = torch.optim.Adam(self.ae1.parameters(), lr=3e-4)
+
 		self.ae2 = AE2(state_dim, action_dim).to(device)
 		self.ae2_optimizer = torch.optim.Adam(self.ae2.parameters(), lr=3e-4)
+
+		self.ae3 = AE3(state_dim, reward_dim).to(device)
+		self.ae3_optimizer = torch.optim.Adam(self.ae3.parameters(), lr=3e-4)
 
 		self.actor = Actor(state_dim, action_dim, max_action, n_step).to(device)
 		self.actor_target = copy.deepcopy(self.actor)
@@ -197,11 +227,14 @@ class MVRL(object):
 		#encoder_state = encoder_state.contiguous().view(encoder_state.size(0), -1)
 		return encoder_state
 
-	def extract_cur_state(self, state, action, next_state):
-		encoder_cur_state, decoder_cur_state = self.ae2(state, action, next_state)
+	def extract_cur_state(self, state, action):
+		encoder_cur_state, decoder_cur_state = self.ae2(state, action)
 		#encoder_state = encoder_state.contiguous().view(encoder_state.size(0), -1)
 		return encoder_cur_state
 
+	def extract_nr_state(self, state, reward):
+		encoder_nr_state, decoder_nr_state = self.ae3(state, reward)
+		return encoder_nr_state
 
 	def pre_train(self, replay_buffer, batch_size):
 
@@ -222,23 +255,32 @@ class MVRL(object):
 		# Sample replay buffer 
 		previous_state, state, action, previous_next_state, next_state, reward, not_done = replay_buffer.sample(batch_size)
 
-		encoder_cur_state, decoder_cur_state = self.ae2(state, action, next_state)
-		ae2_loss = F.mse_loss(torch.cat([state, action, next_state], 1), decoder_cur_state)
+		encoder_cur_state, decoder_cur_state = self.ae2(state, action)
+		ae2_loss = F.mse_loss(torch.cat([state, action], 1), decoder_cur_state)
 		
 		self.ae2_optimizer.zero_grad()
 		ae2_loss.backward()
 		self.ae2_optimizer.step()
+
+		encoder_nr_state, decoder_nr_state = self.ae3(next_state, reward)
+		ae3_loss = F.mse_loss(torch.cat([next_state, reward], 1), decoder_nr_state)
+		
+		self.ae3_optimizer.zero_grad()
+		ae3_loss.backward()
+		self.ae3_optimizer.step()
 
 		previous_state = previous_state.transpose(0,1)
 		previous_next_state = previous_next_state.transpose(0,1)
 		encoder_state, decoder_state = self.ae1(previous_state)
 		encoder_next_state, decoder_next_state = self.ae1(previous_next_state)
 
-		ae1_loss = F.mse_loss(previous_state, decoder_state)
+		#ae1_loss = F.l1_loss(previous_state, decoder_state)/batch_size
+		ae1_loss = F.mse_loss(previous_state, decoder_state)/batch_size
 		
 		self.ae1_optimizer.zero_grad()
 		ae1_loss.backward()
 		self.ae1_optimizer.step()
+
 
 		encoder_state = encoder_state.transpose(0,1) 
 		encoder_state = encoder_state.reshape(encoder_state.size(0), -1) 
