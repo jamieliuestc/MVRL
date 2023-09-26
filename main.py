@@ -61,7 +61,7 @@ if __name__ == "__main__":
 	parser.add_argument("--policy_freq", default=2, type=int)			# Frequency of delayed policy updates
 	parser.add_argument("--n_step", default=15, type=int)			# number of steps
 	parser.add_argument("--cluster_num", default=1e5, type=int)
-	parser.add_argument("--km_num", default=20, type=int)
+	parser.add_argument("--km_num", default=3, type=int)
 	parser.add_argument("--sample_rate", default=0.5, type=float)
 
 	args = parser.parse_args()
@@ -83,11 +83,13 @@ if __name__ == "__main__":
 	#state_dim = env.observation_space.shape[0] - 1
 	state_dim = env.observation_space.shape[0]
 	action_dim = env.action_space.shape[0] 
+	reward_dim = 1
 	max_action = float(env.action_space.high[0])
 
 	kwargs = {
 		"state_dim": state_dim, 
 		"action_dim": action_dim, 
+		"reward_dim": reward_dim,
 		"max_action": max_action,
 		"discount": args.discount,
 		"tau": args.tau,
@@ -111,6 +113,7 @@ if __name__ == "__main__":
 	evaluations = [eval_policy(policy, args.env_name, args.seed, args.n_step)] 
 
 	state, done = env.reset(), False
+	state2 = state
 	#state = state[:-1]
 	previous_state = np.zeros((args.n_step, state_dim + action_dim))
 
