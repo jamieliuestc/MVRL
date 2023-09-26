@@ -21,16 +21,19 @@ def clustering(buffer, policy, kinds_number, km_num, ind, sample_rate):
 	temp5 = temp_buffer[5]
 
 	temp_buffer0 = policy.extract_state(temp0)
-	temp_buffer1 = policy.extract_cur_state(temp1, temp2, temp4)
+	temp_buffer1 = policy.extract_cur_state(temp1, temp2)
+	temp_buffer2 = policy.extract_nr_state(temp4,temp5)	
 	print(temp_buffer0.size())
 	print(temp_buffer1.size())
+	print(temp_buffer2.size())
 	
 	temp_buffer0 = temp_buffer0.cpu().detach().numpy()
 	temp_buffer1 = temp_buffer1.cpu().detach().numpy()
-	clus_buffer = [temp_buffer0,temp_buffer1]
+	temp_buffer2 = temp_buffer2.cpu().detach().numpy()
+	clus_buffer = [temp_buffer0,temp_buffer1,temp_buffer2]
 
 
-	m_kmeans = MultiviewKMeans(n_clusters=km_num, random_state=0)
+	m_kmeans = MultiviewKMeans(n_clusters=km_num, n_init=20, random_state=0)
 	labels = m_kmeans.fit_predict(clus_buffer)
 
 
@@ -39,7 +42,6 @@ def clustering(buffer, policy, kinds_number, km_num, ind, sample_rate):
 	index = buffer.Choose_sample(labels)
 	kinds_i = [0]
 	sample_number = int((len(labels) // km_num) * sample_rate)
-	#print(sample_number)
 
 	for i in range(len(index)):
 		kinds_i.append(kinds_i[i] + len(index[i]) - 1)
