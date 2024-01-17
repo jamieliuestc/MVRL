@@ -169,18 +169,18 @@ if __name__ == "__main__":
 
 		# Train agent after collecting sufficient data
 		if t > args.batch_size and t < args.eval_freq:
-			policy.pre_train(buffer, args.batch_size)
+			policy.pre_train(buffer, args.batch_size, args.n_step)
 
 		if t >= args.eval_freq and t < args.cluster_num:
-			policy.train(buffer, args.batch_size)
+			policy.train(buffer, args.batch_size, args.n_step)
 		if t >= args.cluster_num:
 			i = int(t // args.cluster_num)
 			i = min(i, 5)
 			j = int(t % (2 * i + 16))	
 			if j < i:
-				policy.train(buffer1, args.batch_size)
+				policy.train(buffer1, args.batch_size, args.n_step)
 			else:
-				policy.train(buffer, args.batch_size)
+				policy.train(buffer, args.batch_size, args.n_step)
 
 		if done: 
 			# +1 to account for 0 indexing. +0 on ep_timesteps since it will increment +1 even if done=True
