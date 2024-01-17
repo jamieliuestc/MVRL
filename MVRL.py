@@ -249,7 +249,7 @@ class MVRL(object):
 		self.ae1_optimizer.step()
 
 
-	def train(self, replay_buffer, batch_size):
+	def train(self, replay_buffer, batch_size, n_step):
 		self.total_it += 1
 
 		# Sample replay buffer 
@@ -274,8 +274,8 @@ class MVRL(object):
 		encoder_state, decoder_state = self.ae1(previous_state)
 		encoder_next_state, decoder_next_state = self.ae1(previous_next_state)
 
-		#ae1_loss = F.l1_loss(previous_state, decoder_state)/batch_size
-		ae1_loss = F.mse_loss(previous_state, decoder_state)/batch_size
+		#ae1_loss = F.l1_loss(previous_state, decoder_state)/(n_step**2)
+		ae1_loss = F.mse_loss(previous_state, decoder_state)/(n_step**2)
 		
 		self.ae1_optimizer.zero_grad()
 		ae1_loss.backward()
