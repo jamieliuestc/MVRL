@@ -245,8 +245,8 @@ class MVRL(object):
 
 		cosine_sim = F.cosine_similarity(previous_state, decoder_state, dim=2)
 		similarity_loss = (1.0 - cosine_sim.mean()) ** 2
-		MSE_loss= F.mse_loss(previous_state, decoder_state)
-		ae1_loss = 0.99 * similarity_loss + 0.01 * MSE_loss
+		msevalue_loss = F.mse_loss(previous_state, decoder_state)
+		ae1_loss = 0.99 * similarity_loss + 0.01 * msevalue_loss
 
 		self.ae1_optimizer.zero_grad()
 		ae1_loss.backward()
@@ -280,8 +280,8 @@ class MVRL(object):
 
 		cosine_sim = F.cosine_similarity(previous_state, decoder_state, dim=2)
 		similarity_loss = (1.0 - cosine_sim.mean()) ** 2
-		MSE_loss= F.mse_loss(previous_state, decoder_state)
-		ae1_loss = 0.99 * similarity_loss + 0.01 * MSE_loss
+		msevalue_loss = F.mse_loss(previous_state, decoder_state)
+		ae1_loss = 0.99 * similarity_loss + 0.01 * msevalue_loss
 		
 		self.ae1_optimizer.zero_grad()
 		ae1_loss.backward()
