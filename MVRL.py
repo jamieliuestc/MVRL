@@ -326,7 +326,7 @@ class MVRL(object):
 		# Delayed policy updates
 		if self.total_it % self.policy_freq == 0:
 
-			# Compute actor losse
+			# Compute actor loss
 			actor_loss = -self.critic.Q1(encoder_state, state, self.actor(encoder_state, state)).mean()
 			
 			# Optimize the actor 
