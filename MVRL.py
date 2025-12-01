@@ -236,18 +236,22 @@ class MVRL(object):
 		encoder_nr_state, decoder_nr_state = self.ae3(state, reward)
 		return encoder_nr_state
 
-	def pre_train(self, replay_buffer, batch_size):
+	def pre_train(self, replay_buffer, batch_size, n_step):
 
 		previous_state, state, action, previous_next_state, next_state, reward, not_done = replay_buffer.sample(batch_size)
 
 		previous_state = previous_state.transpose(0,1)
 		encoder_state, decoder_state = self.ae1(previous_state)
-		ae1_loss = F.mse_loss(previous_state, decoder_state)
+
+		cosine_sim = F.cosine_similarity(previous_state, decoder_state, dim=2)
+		similarity_loss = (1.0 - cosine_sim.mean()) ** 2
+		MSE_loss= F.mse_loss(previous_state, decoder_state)
+		ae1_loss = 0.99 * similarity_loss + 0.01 * MSE_loss
 
 		self.ae1_optimizer.zero_grad()
 		ae1_loss.backward()
 		self.ae1_optimizer.step()
-
+		
 
 	def train(self, replay_buffer, batch_size, n_step):
 		self.total_it += 1
@@ -274,13 +278,14 @@ class MVRL(object):
 		encoder_state, decoder_state = self.ae1(previous_state)
 		encoder_next_state, decoder_next_state = self.ae1(previous_next_state)
 
-		#ae1_loss = F.l1_loss(previous_state, decoder_state)/(n_step**2)
-		ae1_loss = F.mse_loss(previous_state, decoder_state)/(n_step**2)
+		cosine_sim = F.cosine_similarity(previous_state, decoder_state, dim=2)
+		similarity_loss = (1.0 - cosine_sim.mean()) ** 2
+		MSE_loss= F.mse_loss(previous_state, decoder_state)
+		ae1_loss = 0.99 * similarity_loss + 0.01 * MSE_loss
 		
 		self.ae1_optimizer.zero_grad()
 		ae1_loss.backward()
 		self.ae1_optimizer.step()
-
 
 		encoder_state = encoder_state.transpose(0,1) 
 		encoder_state = encoder_state.reshape(encoder_state.size(0), -1) 
